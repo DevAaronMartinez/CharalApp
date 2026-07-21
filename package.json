@@ -1,0 +1,10 @@
+{
+  "name": "comunidad-salud",
+  "private": true,
+  "scripts": {
+    "backend": "cd backend && npm start",
+    "backend:dev": "cd backend && npm run dev",
+    "mobile": "cd mobile && npm start",
+    "install:all": "cd backend && npm install && cd ../mobile && npm install"
+  }
+}

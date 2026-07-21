@@ -1,0 +1,30 @@
+{
+  "name": "comunidad-salud-api",
+  "version": "1.0.0",
+  "description": "API serverless para comunidad de salud crónica",
+  "main": "src/handler.js",
+  "scripts": {
+    "dev": "node --watch src/local.js",
+    "start": "node src/local.js",
+    "deploy": "serverless deploy",
+    "deploy:dev": "serverless deploy --stage dev",
+    "seed": "node scripts/seed-dynamo.js",
+    "deploy:full": "serverless deploy --stage dev && USERS_TABLE=comunidad-salud-api-users-dev POSTS_TABLE=comunidad-salud-api-posts-dev node scripts/seed-dynamo.js",
+    "offline": "serverless offline"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1087.0",
+    "@aws-sdk/lib-dynamodb": "^3.1087.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "serverless-http": "^3.2.0",
+    "sharp": "^0.35.3",
+    "tesseract.js": "^7.0.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.40.0",
+    "serverless-offline": "^13.8.1"
+  }
+}
