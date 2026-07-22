@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   BackHandler,
   Dimensions,
   FlatList,
@@ -18,8 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PROFILE_CATEGORY_COLORS } from '@/components/ar/profile-ar-types';
 import { EvidenceEvaluator } from '@/components/health/EvidenceEvaluator';
 import Colors, { categoryLabels } from '@/constants/Colors';
-import { api } from '@/services/api';
-import type { Condition, ConditionCategory, EvidenceType, Recommendation } from '@/types';
+import type { Condition, ConditionCategory, EvidenceType } from '@/types';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -60,21 +58,6 @@ function HeroBackdrop({ tint }: { tint: string }) {
   );
 }
 
-function TipCard({ item, index, tint }: { item: Recommendation; index: number; tint: string }) {
-  return (
-    <View style={styles.tipCard}>
-      <View style={[styles.tipIndex, { backgroundColor: tint }]}>
-        <Text style={styles.tipIndexText}>{index + 1}</Text>
-      </View>
-      <View style={styles.tipContent}>
-        <Text style={styles.tipCardTitle}>{item.title}</Text>
-        <Text style={styles.tipCardBody}>{item.tip}</Text>
-      </View>
-      <Ionicons name="bulb-outline" size={18} color={Colors.warning} />
-    </View>
-  );
-}
-
 function evidenceTypeForCondition(conditionId: string): EvidenceType | null {
   if (conditionId === 'hipertension') return 'blood_pressure';
   if (conditionId === 'diabetes') return 'blood_glucose';
@@ -88,15 +71,7 @@ function shortConditionName(name: string): string {
   return name;
 }
 
-function ConditionPage({
-  item,
-  tips,
-  tipsLoading,
-}: {
-  item: Condition;
-  tips: Recommendation[];
-  tipsLoading: boolean;
-}) {
+function ConditionPage({ item }: { item: Condition }) {
   const tint = PROFILE_CATEGORY_COLORS[item.category];
   const evidenceType = evidenceTypeForCondition(item.id);
 
@@ -124,26 +99,13 @@ function ConditionPage({
       </View>
 
       {evidenceType && <EvidenceEvaluator evidenceType={evidenceType} tint={tint} />}
-
-      <Text style={styles.sectionTitle}>Recomendaciones para ti</Text>
-
-      {tipsLoading ? (
-        <ActivityIndicator color={tint} style={{ marginTop: 24 }} />
-      ) : tips.length === 0 ? (
-        <Text style={styles.emptyTips}>Pronto habrá más consejos para esta condición.</Text>
-      ) : (
-        tips.map((tip, index) => <TipCard key={tip.id} item={tip} index={index} tint={tint} />)
-      )}
     </ScrollView>
   );
 }
 
 export function HealthProfileExplorer({ userName, items, onBack }: Props) {
   const listRef = useRef<FlatList<Condition>>(null);
-  const loadedTipsRef = useRef<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
-  const [tipsById, setTipsById] = useState<Record<string, Recommendation[]>>({});
-  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -155,25 +117,6 @@ export function HealthProfileExplorer({ userName, items, onBack }: Props) {
 
   const active = items[activeIndex] ?? items[0];
   const tint = active ? PROFILE_CATEGORY_COLORS[active.category] : Colors.primary;
-
-  const loadTips = useCallback(async (conditionId: string) => {
-    if (loadedTipsRef.current.has(conditionId)) return;
-    loadedTipsRef.current.add(conditionId);
-    setLoadingId(conditionId);
-    try {
-      const data = await api.getRecommendations(conditionId);
-      setTipsById((prev) => ({ ...prev, [conditionId]: data.recommendations ?? [] }));
-    } catch (e) {
-      console.error(e);
-      setTipsById((prev) => ({ ...prev, [conditionId]: [] }));
-    } finally {
-      setLoadingId(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (active?.id) loadTips(active.id);
-  }, [active?.id, loadTips]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
@@ -268,13 +211,7 @@ export function HealthProfileExplorer({ userName, items, onBack }: Props) {
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={onScroll}
-            renderItem={({ item }) => (
-              <ConditionPage
-                item={item}
-                tips={tipsById[item.id] ?? []}
-                tipsLoading={loadingId === item.id && !tipsById[item.id]}
-              />
-            )}
+            renderItem={({ item }) => <ConditionPage item={item} />}
             getItemLayout={(_, index) => ({
               length: SCREEN_W,
               offset: SCREEN_W * index,
@@ -468,57 +405,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
     marginTop: 10,
-  },
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  emptyTips: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  tipCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  tipIndex: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tipIndexText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  tipContent: {
-    flex: 1,
-  },
-  tipCardTitle: {
-    color: '#F9FAFB',
-    fontSize: 15,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
-  tipCardBody: {
-    color: 'rgba(255,255,255,0.68)',
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 4,
-    flexShrink: 1,
   },
   dots: {
     flexDirection: 'row',
