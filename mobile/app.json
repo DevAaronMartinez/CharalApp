@@ -1,0 +1,83 @@
+{
+  "expo": {
+    "name": "Comunidad Salud",
+    "slug": "comunidad-salud",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "comunidadsalud",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#5B4FCF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.comunidadsalud.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para mostrarte en el mapa de la comunidad y encontrar servicios cercanos.",
+        "NSCameraUsageDescription": "Usamos la cámara para leer el nombre del medicamento en el envase e identificarlo.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#5B4FCF"
+      },
+      "package": "com.comunidadsalud.app",
+      "edgeToEdgeEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permite leer el nombre del medicamento en el envase con la cámara."
+        }
+      ],
+      [
+        "@reactvision/react-viro",
+        {
+          "android": {
+            "xRMode": ["AR"]
+          },
+          "ios": {
+            "cameraUsagePermission": "Comunidad Salud usa la cámara para escanear medicamentos en realidad aumentada.",
+            "microphoneUsagePermission": "Comunidad Salud puede usar el micrófono en experiencias AR.",
+            "photosPermission": "Comunidad Salud puede leer fotos para el escaneo AR de medicamentos.",
+            "savePhotosPermission": "Comunidad Salud puede guardar capturas del escaneo AR."
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permite que Comunidad Salud use tu ubicación para el mapa de la comunidad."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "auto"
+    }
+  }
+}
