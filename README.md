@@ -15,15 +15,30 @@ charal3/
 - **Comunidad**: publicar consejos y ver personas que necesitan ayuda
 - **Recomendaciones**: tips personalizados por tipo de condición
 - **Mapa**: concentración de usuarios + clínicas y servicios de salud
-- **Perfil**: condiciones, bio, ubicación y flag "necesito ayuda"
+- **Medicinas (AR)**: escaneo de envases con cámara AR (ViroReact) u OCR
 
 ## Requisitos
 
 - Node.js 20+
 - npm
-- Expo Go (para probar en dispositivo) o simulador iOS/Android
+- Expo Go (modo básico) o **development build** para AR con ViroReact
 
-## Inicio rápido
+## AR con ViroReact (Medicinas)
+
+El escaneo de medicamentos usa [@reactvision/react-viro](https://github.com/ReactVision/viro) en builds nativos:
+
+- **Expo Go**: cámara clásica + OCR por backend (sin AR 3D).
+- **Development build** (recomendado para AR):
+
+```bash
+cd mobile
+npm install
+npx expo prebuild
+npx expo run:ios    # o run:android
+```
+
+Tras compilar, la pestaña **Medicinas** muestra cámara AR con marco 3D, cápsula flotante y captura congelada para OCR.
+
 
 ### 1. Backend (API local)
 
