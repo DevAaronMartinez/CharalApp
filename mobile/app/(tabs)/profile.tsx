@@ -1,29 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useState } from 'react';
 import {
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { ConditionPicker } from '@/components/ConditionPicker';
 import { Screen } from '@/components/Screen';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
   const { user, conditions, logout, updateProfile } = useAuth();
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
 
   const [bio, setBio] = useState(user?.bio ?? '');
-  const [needsHelp, setNeedsHelp] = useState(user?.needsHelp ?? false);
   const [selectedConditions, setSelectedConditions] = useState<string[]>(
     user?.conditionIds ?? []
   );
@@ -59,7 +60,6 @@ export default function ProfileScreen() {
     try {
       await updateProfile({
         bio,
-        needsHelp,
         conditionIds: selectedConditions,
       });
       Alert.alert('Perfil actualizado', 'Tus cambios se guardaron correctamente.');
@@ -74,7 +74,11 @@ export default function ProfileScreen() {
 
   return (
     <Screen style={{ backgroundColor: colors.background }}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 24 }]}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
@@ -96,29 +100,19 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <View style={styles.row}>
-          <View>
-            <Text style={[styles.label, { color: colors.text }]}>Necesito ayuda</Text>
-            <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              Otros miembros podrán identificarte y ofrecerte apoyo
-            </Text>
-          </View>
-          <Switch
-            value={needsHelp}
-            onValueChange={setNeedsHelp}
-            trackColor={{ true: Colors.accent }}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
         <Text style={[styles.label, { color: colors.text }]}>Mis condiciones</Text>
-        <ConditionPicker
-          conditions={conditions}
-          selectedId={null}
-          onSelect={() => {}}
-          showAll={false}
-        />
+        {(user.conditionIds?.length ?? 0) > 0 && (
+          <Pressable style={styles.arProfileBtn} onPress={() => router.push('/profile-ar')}>
+            <Ionicons name="analytics-outline" size={22} color="#fff" />
+            <View style={styles.arProfileBtnText}>
+              <Text style={styles.arProfileTitle}>Evaluar mi evidencia de salud</Text>
+              <Text style={styles.arProfileHint}>
+                Presión arterial, glucosa o laboratorio con retroalimentación
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+          </Pressable>
+        )}
         <View style={styles.conditionGrid}>
           {conditions.map((c) => {
             const active = selectedConditions.includes(c.id);
@@ -134,7 +128,10 @@ export default function ProfileScreen() {
                 ]}
                 onPress={() => toggleCondition(c.id)}
               >
-                <Text style={{ color: active ? '#fff' : colors.text, fontSize: 12, fontWeight: '600' }}>
+                <Text
+                  style={{ color: active ? '#fff' : colors.text, fontSize: 12, fontWeight: '600' }}
+                  numberOfLines={2}
+                >
                   {c.name}
                 </Text>
               </Pressable>
@@ -167,7 +164,8 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingBottom: 24 },
+  scrollContent: { flexGrow: 1 },
+  rowText: { flex: 1, minWidth: 0, paddingRight: 12 },
   card: {
     alignItems: 'center',
     margin: 16,
@@ -187,8 +185,20 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontWeight: '800', marginTop: 12 },
   email: { fontSize: 14, marginTop: 4 },
   section: { paddingHorizontal: 16, marginBottom: 16 },
+  arProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.primary,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+  arProfileBtnText: { flex: 1 },
+  arProfileTitle: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  arProfileHint: { color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 },
   label: { fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  hint: { fontSize: 12, marginTop: 2, maxWidth: 240 },
+  hint: { fontSize: 12, marginTop: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   input: {
     borderWidth: 1,
@@ -208,6 +218,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
+    maxWidth: '100%',
+    flexBasis: '48%',
+    flexGrow: 1,
   },
   locationBtn: {
     flexDirection: 'row',

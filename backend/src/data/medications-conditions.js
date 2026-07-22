@@ -1,5 +1,6 @@
 /**
  * Vincula medicamentos con enfermedades crónicas según principio activo / indicación.
+ * Catálogo limitado a diabetes e hipertensión.
  */
 
 function normalize(text) {
@@ -87,216 +88,54 @@ const RULES = [
     ],
   },
   {
-    conditionIds: ['hipercolesterolemia'],
+    conditionIds: ['diabetes'],
     terms: [
-      'atorvastatina',
-      'rosuvastatina',
-      'simvastatina',
-      'pravastatina',
-      'fluvastatina',
-      'pitavastatina',
-      'lovastatina',
-      'ezetimiba',
-      'fenofibrato',
-      'gemfibrozilo',
-      'alirocumab',
-      'evolocumab',
-      'colesevelam',
-      'estatina',
-      'dislipidemia',
-      'hipercolesterolemia',
-      'ldl',
-      'pcsk9',
-    ],
-  },
-  {
-    conditionIds: ['insuficiencia_cardiaca'],
-    terms: [
-      'sacubitril',
-      'entresto',
-      'carvedilol',
-      'bisoprolol',
-      'metoprolol',
-      'ivabradina',
-      'digoxina',
-      'espironolactona',
-      'eplerenona',
-      'furosemida',
-      'torasemida',
-      'dobutamina',
-      'milrinona',
-      'insuficiencia cardiaca',
-      'fraccion de eyeccion',
-      'ic con fraccion',
-    ],
-  },
-  {
-    conditionIds: ['hipotiroidismo'],
-    terms: [
-      'levotiroxina',
-      'liothyronine',
-      't3',
-      'euthyrox',
-      'synthroid',
-      'hipotiroidismo',
-      'hormona tiroidea',
-    ],
-  },
-  {
-    conditionIds: ['hipertiroidismo'],
-    terms: ['metimazol', 'propiltiouracilo', 'hipertiroidismo', 'tiroides hiperactivo'],
-  },
-  {
-    conditionIds: ['asma_cronica'],
-    terms: [
-      'salbutamol',
-      'albuterol',
-      'formoterol',
-      'salmeterol',
-      'budesonida inhalada',
-      'fluticasona inhalada',
-      'beclometasona inhalada',
-      'mometasona inhalada',
-      'montelukast',
-      'tiotropio',
-      'ipratropio',
-      'omalizumab',
-      'teofilina',
-      'asma',
-      'inhalador',
-      'laba',
-      'lama',
-    ],
-  },
-  {
-    conditionIds: ['epoc'],
-    terms: [
-      'tiotropio',
-      'ipratropio',
-      'umeclidinio',
-      'vilanterol',
-      'roflumilast',
-      'budesonida inhalada',
-      'fluticasona inhalada',
-      'formoterol',
-      'salbutamol ipatropio',
-      'epoc',
-      'enfermedad pulmonar obstructiva',
-    ],
-  },
-  {
-    conditionIds: ['enfermedad_renal_cronica'],
-    terms: [
-      'sevelamer',
-      'cinecalcet',
-      'dapagliflozina nefropatia',
-      'finerenona',
-      'eritropoyetina',
-      'nefroprotector',
-      'enfermedad renal cronica',
-      'insuficiencia renal cronica',
-    ],
-  },
-  {
-    conditionIds: ['osteoporosis'],
-    terms: [
-      'alendronato',
-      'risedronato',
-      'ibandronato',
-      'zoledronico',
-      'denosumab',
-      'raloxifeno',
-      'teriparatida',
-      'abaloparatida',
-      'romosozumab',
-      'calcio vitamina d',
-      'carbonato de calcio',
-      'osteoporosis',
-    ],
-  },
-  {
-    conditionIds: ['gota'],
-    terms: [
-      'alopurinol',
-      'febuxostat',
-      'probenecid',
-      'colchicina',
-      'pegloticasa',
-      'gota',
-      'hipouricemiante',
-    ],
-  },
-  {
-    conditionIds: ['parkinson'],
-    terms: [
-      'levodopa',
-      'carbidopa',
-      'pramipexol',
-      'ropinirol',
-      'rotigotina',
-      'rasagilina',
-      'selegilina',
-      'entacapona',
-      'amantadina',
-      'parkinson',
-    ],
-  },
-  {
-    conditionIds: ['demencia'],
-    terms: [
-      'donepezilo',
-      'memantina',
-      'galantamina',
-      'rivastigmina',
-      'demencia',
-      'alzheimer',
-    ],
-  },
-  {
-    conditionIds: ['lupus_eritematoso'],
-    terms: [
-      'hidroxicloroquina',
-      'cloroquina',
-      'belimumab',
-      'micofenolato',
-      'azatioprina',
-      'lupus',
-      'lupico',
-    ],
-  },
-  {
-    conditionIds: ['glaucoma'],
-    terms: [
-      'latanoprost',
-      'travoprost',
-      'bimatoprost',
-      'tafluprost',
-      'timolol oftalm',
-      'dorzolamida',
-      'brimonidina oftalm',
-      'brinzolamida',
-      'netarsudil',
-      'glaucoma',
-    ],
-  },
-  {
-    conditionIds: ['hepatitis_cronica'],
-    terms: [
-      'sofosbuvir',
-      'ledipasvir',
-      'velpatasvir',
-      'ribavirina hepatitis',
-      'entecavir',
-      'tenofovir',
-      'hepatitis b',
-      'hepatitis c',
+      'metformina',
+      'metformin',
+      'insulina',
+      'insulin',
+      'glargina',
+      'lantus',
+      'empagliflozina',
+      'jardiance',
+      'dapagliflozina',
+      'forxiga',
+      'canagliflozina',
+      'sitagliptina',
+      'januvia',
+      'linagliptina',
+      'glimepirida',
+      'glibenclamida',
+      'glipizida',
+      'pioglitazona',
+      'semaglutida',
+      'ozempic',
+      'liraglutida',
+      'victoza',
+      'exenatida',
+      'repaglinida',
+      'acarbose',
+      'diabetes',
+      'antidiabetico',
+      'hipoglucemiante',
+      'isglt2',
+      'sglt2',
+      'dpp-4',
+      'sulfonilurea',
+      'biguanida',
     ],
   },
 ];
 
+const ALLOWED_CONDITIONS = new Set(['diabetes', 'hipertension']);
+
+function restrictConditionIds(ids) {
+  return [...new Set(ids.filter((id) => ALLOWED_CONDITIONS.has(id)))];
+}
+
 function enrichMedicationConditions(m) {
   const haystack = medHaystack(m);
-  const ids = new Set(m.conditionIds ?? []);
+  const ids = new Set(restrictConditionIds(m.conditionIds ?? []));
 
   for (const rule of RULES) {
     if (matchesAny(haystack, rule.terms)) {
@@ -304,15 +143,16 @@ function enrichMedicationConditions(m) {
     }
   }
 
-  // Comorbilidades frecuentes con diabetes
-  if (ids.has('hipertension') || ids.has('hipercolesterolemia') || ids.has('insuficiencia_cardiaca')) {
-    if (matchesAny(haystack, ['nefroprotector', 'diabetes', 'jardiance', 'empagliflozina', 'dapagliflozina'])) {
-      ids.add('diabetes');
-    }
+  // Comorbilidad frecuente: ARA-II y iSGLT2 suelen indicarse en diabetes con hipertensión
+  if (ids.has('hipertension') && matchesAny(haystack, ['nefroprotector', 'losartan', 'valsartan', 'irbesartan'])) {
+    ids.add('diabetes');
   }
 
-  const conditionIds = [...ids];
-  if (conditionIds.length === (m.conditionIds ?? []).length && conditionIds.every((id, i) => id === (m.conditionIds ?? [])[i])) {
+  const conditionIds = restrictConditionIds([...ids]);
+  if (
+    conditionIds.length === (m.conditionIds ?? []).length &&
+    conditionIds.every((id, i) => id === (m.conditionIds ?? [])[i])
+  ) {
     return m;
   }
   return { ...m, conditionIds };

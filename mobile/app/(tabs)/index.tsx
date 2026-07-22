@@ -1,153 +1,114 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { CommunityFeed } from '@/components/community/CommunityFeed';
+import { RecommendationsFeed } from '@/components/community/RecommendationsFeed';
 import { ConditionPicker } from '@/components/ConditionPicker';
-import { PostCard } from '@/components/PostCard';
 import { Screen } from '@/components/Screen';
-import { UserCard } from '@/components/UserCard';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/services/api';
-import type { Post, User } from '@/types';
 
-export default function CommunityScreen() {
+type HubSection = 'community' | 'recommendations';
+
+export default function HubScreen() {
   const { conditions, selectedConditionId, setSelectedConditionId } = useAuth();
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
-
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [usersNeedingHelp, setUsersNeedingHelp] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'posts' | 'help'>('posts');
+  const [section, setSection] = useState<HubSection>('community');
 
   const conditionMap = Object.fromEntries(conditions.map((c) => [c.id, c.name]));
+  const recommendationsConditionId =
+    selectedConditionId ?? conditions[0]?.id ?? null;
 
-  const loadData = useCallback(async () => {
-    const [postsData, helpUsers] = await Promise.all([
-      api.getPosts(selectedConditionId ?? undefined),
-      api.getUsers({
-        conditionId: selectedConditionId ?? undefined,
-        needsHelp: true,
-      }),
-    ]);
-    setPosts(postsData);
-    setUsersNeedingHelp(helpUsers);
-  }, [selectedConditionId]);
-
-  useEffect(() => {
-    setLoading(true);
-    loadData()
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [loadData]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
-
-  const handleLike = async (postId: string) => {
-    try {
-      const updated = await api.likePost(postId);
-      setPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  const sectionHint =
+    section === 'community'
+      ? 'Publicaciones de la comunidad según tu condición'
+      : 'Consejos personalizados según tu condición';
 
   return (
     <Screen style={{ backgroundColor: colors.background }}>
       <View style={styles.container}>
-      <View style={styles.hero}>
-        <Text style={[styles.heroTitle, { color: colors.text }]}>Comunidad Salud</Text>
-        <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-          Comparte lo que te ayuda y conecta con personas que te entienden
-        </Text>
-        <Link href="/create-post" asChild>
-          <Pressable style={styles.createBtn}>
-            <Ionicons name="add-circle" size={20} color="#fff" />
-            <Text style={styles.createBtnText}>Publicar consejo</Text>
+        <View style={styles.hero}>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>+VIDA</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>{sectionHint}</Text>
+        </View>
+
+        <View style={styles.sectionRow}>
+          <Pressable
+            style={[styles.sectionBtn, section === 'community' && styles.sectionBtnActive]}
+            onPress={() => setSection('community')}
+          >
+            <Ionicons
+              name="people"
+              size={16}
+              color={section === 'community' ? '#fff' : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.sectionBtnText,
+                { color: section === 'community' ? '#fff' : colors.textSecondary },
+              ]}
+            >
+              Comunidad
+            </Text>
           </Pressable>
-        </Link>
-      </View>
-
-      <ConditionPicker
-        conditions={conditions}
-        selectedId={selectedConditionId}
-        onSelect={setSelectedConditionId}
-      />
-
-      <View style={styles.tabs}>
-        <Pressable
-          style={[styles.tab, tab === 'posts' && styles.tabActive]}
-          onPress={() => setTab('posts')}
-        >
-          <Text style={[styles.tabText, tab === 'posts' && styles.tabTextActive]}>
-            Publicaciones
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tab, tab === 'help' && styles.tabActive]}
-          onPress={() => setTab('help')}
-        >
-          <Text style={[styles.tabText, tab === 'help' && styles.tabTextActive]}>
-            Necesitan ayuda ({usersNeedingHelp.length})
-          </Text>
-        </Pressable>
-      </View>
-
-      {loading ? (
-        <ActivityIndicator style={styles.loader} color={Colors.primary} />
-      ) : tab === 'posts' ? (
-        <FlatList
-          data={posts}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          renderItem={({ item }) => (
-            <PostCard
-              post={item}
-              conditionName={conditionMap[item.conditionId]}
-              onLike={() => handleLike(item.id)}
+          <Pressable
+            style={[styles.sectionBtn, section === 'recommendations' && styles.sectionBtnActive]}
+            onPress={() => setSection('recommendations')}
+          >
+            <Ionicons
+              name="bulb"
+              size={16}
+              color={section === 'recommendations' ? '#fff' : colors.textSecondary}
             />
-          )}
-          ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.textSecondary }]}>
-              No hay publicaciones aún. ¡Sé el primero en compartir!
+            <Text
+              style={[
+                styles.sectionBtnText,
+                { color: section === 'recommendations' ? '#fff' : colors.textSecondary },
+              ]}
+            >
+              Recomendaciones
             </Text>
-          }
-          contentContainerStyle={styles.list}
+          </Pressable>
+        </View>
+
+        <ConditionPicker
+          conditions={conditions}
+          selectedId={section === 'community' ? selectedConditionId : recommendationsConditionId}
+          onSelect={setSelectedConditionId}
+          showAll={section === 'community'}
         />
-      ) : (
-        <FlatList
-          data={usersNeedingHelp}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          renderItem={({ item }) => (
-            <UserCard
-              user={item}
-              conditionNames={item.conditionIds.map((id) => conditionMap[id] ?? id)}
-            />
-          )}
-          ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.textSecondary }]}>
-              Nadie ha marcado que necesita ayuda en esta condición.
-            </Text>
-          }
-          contentContainerStyle={styles.list}
-        />
-      )}
+
+        {section === 'community' ? (
+          <CommunityFeed
+            selectedConditionId={selectedConditionId}
+            conditionMap={conditionMap}
+          />
+        ) : (
+          <RecommendationsFeed activeConditionId={recommendationsConditionId} />
+        )}
+
+        {section === 'community' && (
+          <View style={[styles.fabWrap, { bottom: 12 }]} pointerEvents="box-none">
+            <View style={styles.fabGlow} />
+            <View style={styles.fabRing} />
+            <Link href="/create-post" asChild>
+              <Pressable
+                style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Publicar consejo"
+              >
+                <Ionicons name="document-text" size={26} color="#fff" />
+                <View style={styles.fabBadge}>
+                  <Ionicons name="add" size={14} color={Colors.primary} />
+                </View>
+              </Pressable>
+            </Link>
+          </View>
+        )}
       </View>
     </Screen>
   );
@@ -156,65 +117,100 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   hero: {
-    padding: 20,
-    paddingTop: 4,
+    paddingHorizontal: 20,
+    paddingTop: 2,
+    paddingBottom: 4,
   },
   heroTitle: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
   },
   heroSubtitle: {
-    fontSize: 14,
-    marginTop: 4,
-    lineHeight: 20,
+    fontSize: 13,
+    marginTop: 2,
+    lineHeight: 18,
   },
-  createBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.primary,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginTop: 14,
-  },
-  createBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  tabs: {
+  sectionRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: 6,
+    padding: 3,
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB22',
+    gap: 4,
   },
-  tab: {
+  sectionBtn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB33',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: 9,
   },
-  tabActive: {
+  sectionBtnActive: {
     backgroundColor: Colors.primary,
   },
-  tabText: {
-    fontWeight: '600',
-    fontSize: 13,
-    color: '#6B7280',
+  sectionBtnText: {
+    fontWeight: '700',
+    fontSize: 12,
   },
-  tabTextActive: {
-    color: '#fff',
+  fabWrap: {
+    position: 'absolute',
+    right: 18,
+    width: 68,
+    height: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
-  loader: { marginTop: 40 },
-  list: { paddingBottom: 24 },
-  empty: {
-    textAlign: 'center',
-    marginTop: 40,
-    paddingHorizontal: 32,
-    fontSize: 14,
+  fabGlow: {
+    position: 'absolute',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: Colors.primary,
+    opacity: 0.4,
+    transform: [{ scale: 1.18 }],
+  },
+  fabRing: {
+    position: 'absolute',
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
+  fab: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primaryLight,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    elevation: 14,
+  },
+  fabPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.94 }],
+  },
+  fabBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primary,
   },
 });

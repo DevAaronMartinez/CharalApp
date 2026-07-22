@@ -7,6 +7,7 @@ type Props = {
   scanPhase: MedicationScanPhase;
   showOverlay: boolean;
   scanSession?: number;
+  hideHudChrome?: boolean;
   onArTrackingReady?: () => void;
   onArTargetLocked?: (locked: boolean) => void;
 };

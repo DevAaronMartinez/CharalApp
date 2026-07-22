@@ -166,4 +166,191 @@ async function extractTextFromImageBase64(imageBase64) {
   };
 }
 
-module.exports = { extractTextFromImageBase64, cleanOcrLines, isUsefulOcrLine };
+/** Variantes para pantallas LCD (glucómetro, tensiómetro). */
+async function buildDigitOcrVariants(buffer) {
+  const meta = await sharp(buffer).metadata();
+  const targetWidth = Math.min(Math.max(meta.width ?? 900, 1200), 2200);
+
+  const base = sharp(buffer).rotate().resize(targetWidth, null, {
+    fit: 'inside',
+    withoutEnlargement: false,
+  });
+
+  const [lcd, inverted, center] = await Promise.all([
+    base
+      .clone()
+      .grayscale()
+      .normalize()
+      .linear(2.2, -60)
+      .sharpen({ sigma: 2.4 })
+      .png()
+      .toBuffer(),
+    base
+      .clone()
+      .grayscale()
+      .negate()
+      .normalize()
+      .linear(1.6, -25)
+      .sharpen({ sigma: 1.6 })
+      .png()
+      .toBuffer(),
+    base
+      .clone()
+      .extract({
+        left: Math.floor((meta.width ?? targetWidth) * 0.15),
+        top: Math.floor((meta.height ?? targetWidth) * 0.2),
+        width: Math.floor((meta.width ?? targetWidth) * 0.7),
+        height: Math.floor((meta.height ?? targetWidth) * 0.55),
+      })
+      .grayscale()
+      .normalize()
+      .linear(2.5, -70)
+      .sharpen({ sigma: 2 })
+      .png()
+      .toBuffer()
+      .catch(() => null),
+  ]);
+
+  return [lcd, inverted, center].filter(Boolean);
+}
+
+async function recognizeBufferWithPsm(worker, buffer, psm) {
+  await worker.setParameters({
+    tessedit_pageseg_mode: psm,
+    preserve_interword_spaces: '1',
+  });
+  return recognizeBuffer(worker, buffer);
+}
+
+async function recognizeDigitsOnly(worker, buffer) {
+  await worker.setParameters({
+    tessedit_pageseg_mode: PSM.SINGLE_LINE,
+    tessedit_char_whitelist: '0123456789',
+    preserve_interword_spaces: '0',
+  });
+  const { raw, lines } = await recognizeBuffer(worker, buffer);
+  await worker.setParameters({
+    tessedit_char_whitelist: '',
+    preserve_interword_spaces: '1',
+  });
+  const fromRaw = (raw.match(/\d{2,3}/g) ?? [])
+    .map((part) => part.trim())
+    .filter((part) => {
+      const value = Number(part);
+      return value >= 20 && value <= 600;
+    });
+
+  const merged = [...new Set([...lines.map((l) => l.trim()).filter((l) => /^\d{2,3}$/.test(l)), ...fromRaw])];
+
+  return { raw, lines: merged };
+}
+
+async function buildDisplayCropVariants(buffer) {
+  const meta = await sharp(buffer).metadata();
+  const w = meta.width ?? 900;
+  const h = meta.height ?? 1200;
+  const targetWidth = Math.min(Math.max(w, 1000), 2000);
+
+  const crops = [
+    { left: 0.2, top: 0.08, width: 0.6, height: 0.35 },
+    { left: 0.25, top: 0.32, width: 0.5, height: 0.28 },
+    { left: 0.22, top: 0.28, width: 0.56, height: 0.38 },
+    { left: 0.15, top: 0.2, width: 0.7, height: 0.55 },
+  ];
+
+  const variants = [];
+  for (const crop of crops) {
+    try {
+      const buf = await sharp(buffer)
+        .rotate()
+        .extract({
+          left: Math.floor(w * crop.left),
+          top: Math.floor(h * crop.top),
+          width: Math.max(1, Math.floor(w * crop.width)),
+          height: Math.max(1, Math.floor(h * crop.height)),
+        })
+        .resize(targetWidth, null, { fit: 'inside', withoutEnlargement: false })
+        .grayscale()
+        .normalize()
+        .linear(2.4, -65)
+        .sharpen({ sigma: 2.2 })
+        .png()
+        .toBuffer();
+      variants.push(buf);
+    } catch {
+      // ignore invalid crop on tiny images
+    }
+  }
+
+  return variants;
+}
+
+/** OCR sin filtro de medicamentos — útil para lecturas numéricas (PA, glucosa). */
+async function extractRawTextFromImageBase64(imageBase64) {
+  const worker = await getWorker();
+  const buffer = Buffer.from(imageBase64, 'base64');
+  const variants = await buildOcrVariants(buffer);
+  const digitVariants = await buildDigitOcrVariants(buffer);
+  const displayCrops = await buildDisplayCropVariants(buffer);
+
+  let allLines = [];
+  let rawParts = [];
+  let digitLines = [];
+  let displayParts = [];
+
+  for (const crop of displayCrops) {
+    for (const psm of [PSM.SINGLE_LINE, PSM.SINGLE_BLOCK]) {
+      const { raw, lines } = await recognizeBufferWithPsm(worker, crop, psm);
+      if (raw.trim()) {
+        rawParts.unshift(raw.trim());
+        displayParts.push(raw.trim());
+      }
+      allLines = mergeLines(allLines, lines);
+    }
+    const digits = await recognizeDigitsOnly(worker, crop);
+    if (digits.raw.trim()) {
+      rawParts.unshift(digits.raw.trim());
+      displayParts.push(digits.raw.trim());
+    }
+    digitLines = mergeLines(digitLines, digits.lines);
+  }
+
+  for (const variant of variants) {
+    const { raw, lines } = await recognizeBufferWithPsm(worker, variant, PSM.SINGLE_BLOCK);
+    if (raw.trim()) rawParts.push(raw.trim());
+    allLines = mergeLines(allLines, lines);
+  }
+
+  for (const variant of digitVariants) {
+    for (const psm of [PSM.SINGLE_LINE, PSM.SINGLE_WORD, PSM.SPARSE_TEXT]) {
+      const { raw, lines } = await recognizeBufferWithPsm(worker, variant, psm);
+      if (raw.trim()) rawParts.push(raw.trim());
+      allLines = mergeLines(allLines, lines);
+    }
+    const digits = await recognizeDigitsOnly(worker, variant);
+    if (digits.lines.length) digitLines = mergeLines(digitLines, digits.lines);
+  }
+
+  await worker.setParameters({
+    tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+    tessedit_char_whitelist: '',
+    preserve_interword_spaces: '1',
+  });
+
+  const cleanedLines = allLines
+    .map((l) => l.trim().replace(/\s+/g, ' '))
+    .filter((l) => l.length >= 1);
+  const numericLines = mergeLines([...digitLines], cleanedLines);
+
+  const displayHint = digitLines.length ? `mg/dl\n${digitLines.join('\n')}` : '';
+
+  return {
+    text: numericLines.join('\n'),
+    lines: numericLines,
+    rawText: [displayHint, rawParts.join('\n')].filter(Boolean).join('\n'),
+    digitLines,
+    displayText: [displayHint, ...displayParts].filter(Boolean).join('\n'),
+  };
+}
+
+module.exports = { extractTextFromImageBase64, extractRawTextFromImageBase64, cleanOcrLines, isUsefulOcrLine };

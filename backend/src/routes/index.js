@@ -149,6 +149,32 @@ router.post(
   })
 );
 
+router.post(
+  '/health/evidence/detect',
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const { type, imageBase64, ocrText } = req.body ?? {};
+    const result = await store.detectEvidence({ type, imageBase64, ocrText });
+    if (result.error) {
+      return res.status(422).json(result);
+    }
+    res.json(result);
+  })
+);
+
+router.post(
+  '/health/evidence/evaluate',
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const { type, imageBase64, manual, ocrText } = req.body ?? {};
+    const result = await store.evaluateEvidence({ type, imageBase64, manual, ocrText });
+    if (result.error) {
+      return res.status(422).json(result);
+    }
+    res.json(result);
+  })
+);
+
 router.get(
   '/users',
   optionalAuth,

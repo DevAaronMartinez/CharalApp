@@ -239,9 +239,11 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+    minHeight: 0,
     marginHorizontal: 12,
     marginBottom: 12,
     borderRadius: 16,
+    overflow: 'hidden',
   },
   loader: { marginTop: 80 },
 });

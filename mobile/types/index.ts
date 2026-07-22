@@ -89,3 +89,45 @@ export interface AuthResponse {
   user: User;
   token: string;
 }
+
+export type EvidenceType = 'blood_pressure' | 'blood_glucose';
+
+export type GlucoseContext = 'fasting' | 'postprandial' | 'hba1c' | 'unknown';
+
+export type BloodPressureContext = 'resting' | 'post_activity' | 'stress' | 'unknown';
+
+export type EvidenceSeverity = 'success' | 'warning' | 'danger' | 'critical';
+
+export interface EvidenceEvaluationResult {
+  type: EvidenceType;
+  reading: string;
+  label: string;
+  level: string;
+  severity: EvidenceSeverity;
+  feedback: string[];
+  disclaimer: string;
+  source?: 'manual' | 'ocr';
+  values?: Record<string, unknown>;
+  detectedLines?: string[];
+}
+
+export interface EvidenceDetectionResult {
+  type: EvidenceType;
+  found: boolean;
+  confident?: boolean;
+  suggestions?: {
+    systolic?: number;
+    diastolic?: number;
+    pulse?: number;
+    value?: number;
+    unit?: string;
+    context?: GlucoseContext;
+  };
+  detectedLines?: string[];
+}
+
+export interface EvidenceEvaluationError {
+  error: string;
+  detectedLines?: string[];
+  ocrText?: string;
+}

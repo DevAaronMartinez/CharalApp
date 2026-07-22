@@ -11,7 +11,7 @@ export function UserCard({ user, conditionNames }: { user: User; conditionNames:
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.row}>
-        <View style={[styles.avatar, user.needsHelp && styles.avatarHelp]}>
+        <View style={[styles.avatar]}>
           <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
         </View>
         <View style={styles.info}>
@@ -22,12 +22,6 @@ export function UserCard({ user, conditionNames }: { user: User; conditionNames:
             </Text>
           )}
         </View>
-        {user.needsHelp && (
-          <View style={styles.helpBadge}>
-            <Ionicons name="hand-left" size={12} color="#fff" />
-            <Text style={styles.helpText}>Necesita ayuda</Text>
-          </View>
-        )}
       </View>
       {user.bio && (
         <Text style={[styles.bio, { color: colors.textSecondary }]} numberOfLines={2}>
@@ -95,9 +89,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarHelp: {
-    backgroundColor: Colors.accent,
-  },
   avatarText: {
     color: '#fff',
     fontWeight: '700',
@@ -114,20 +105,6 @@ const styles = StyleSheet.create({
   city: {
     fontSize: 12,
     marginTop: 2,
-  },
-  helpBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.accent,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  helpText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
   },
   bio: {
     fontSize: 13,

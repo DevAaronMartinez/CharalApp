@@ -41,7 +41,7 @@ const CLASS_DEFAULTS = {
     warns: ['Riesgo de hipoglucemia según fármaco', 'Control glucémico regular'],
   },
   anticonvulsant: {
-    conditions: ['epilepsia'],
+    conditions: [],
     warns: ['No suspender abruptamente', 'Control de niveles si aplica'],
   },
   respiratory: {
@@ -59,7 +59,7 @@ const CLASS_DEFAULTS = {
   },
   hormone: {
     clinical: 'Trastorno hormonal — ajuste según laboratorios',
-    conditions: ['hipotiroidismo'],
+    conditions: [],
     warns: ['Tomar a la misma hora', 'No automedicarse'],
   },
   vitamin: {
@@ -72,7 +72,7 @@ const CLASS_DEFAULTS = {
   },
   immunosuppressant: {
     clinical: 'Enfermedad autoinmune o trasplante',
-    conditions: ['lupus_eritematoso', 'artritis_reumatoide'],
+    conditions: [],
     warns: ['Riesgo infeccioso', 'Vacunas vivas contraindicadas'],
   },
   urology: {

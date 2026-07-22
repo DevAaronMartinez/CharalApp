@@ -58,7 +58,14 @@ function getApiUrl(): string {
   return 'http://localhost:3001';
 }
 
-const API_URL = getApiUrl();
+/** Resuelve en cada petición (Metro/scriptURL puede no estar listo al importar el módulo). */
+function resolveApiUrl(): string {
+  return getApiUrl();
+}
+
+export function getResolvedApiUrl(): string {
+  return resolveApiUrl();
+}
 
 let authToken: string | null = null;
 
@@ -99,7 +106,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.Authorization = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${resolveApiUrl()}${path}`, {
     ...options,
     headers,
   });
@@ -213,4 +220,38 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(updates),
     }),
+
+  detectHealthEvidence: (payload: {
+    type: import('@/types').EvidenceType;
+    imageBase64?: string;
+    ocrText?: string;
+  }) =>
+    request<import('@/types').EvidenceDetectionResult>(
+      '/api/health/evidence/detect',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    ),
+
+  evaluateHealthEvidence: (payload: {
+    type: import('@/types').EvidenceType;
+    imageBase64?: string;
+    ocrText?: string;
+    manual?: {
+      systolic?: number;
+      diastolic?: number;
+      pulse?: number;
+      value?: number;
+      unit?: string;
+      context?: import('@/types').GlucoseContext | import('@/types').BloodPressureContext;
+    };
+  }) =>
+    request<import('@/types').EvidenceEvaluationResult | import('@/types').EvidenceEvaluationError>(
+      '/api/health/evidence/evaluate',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    ),
 };

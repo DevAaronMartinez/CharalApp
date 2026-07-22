@@ -95,7 +95,20 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-post"
-          options={{ title: 'Nueva publicación', presentation: 'modal' }}
+          options={{
+            title: 'Nueva publicación',
+            presentation: 'modal',
+            headerBackTitle: 'Atrás',
+          }}
+        />
+        <Stack.Screen
+          name="profile-ar"
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            gestureEnabled: true,
+            animation: 'slide_from_right',
+          }}
         />
       </Stack>
     </ThemeProvider>

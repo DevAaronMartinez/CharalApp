@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,10 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CameraView as CameraViewType } from 'expo-camera';
-import { MedicationARViewLoader } from '@/components/ar/MedicationARViewLoader';
-import type { MedicationARViewHandle, MedicationScanPhase } from '@/components/ar/med-ar-types';
 import { Screen } from '@/components/Screen';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -29,30 +27,22 @@ import {
   identifyMedicationFromPhoto,
   isExpoGo,
 } from '@/utils/medicationOcr';
-import { isViroNativeAvailable } from '@/utils/viro';
-
-const USE_VIRO_AR = isViroNativeAvailable();
 
 type Mode = 'camera' | 'search';
 
 export default function MedARScreen() {
   const { user, conditions, selectedConditionId } = useAuth();
+  const tabBarHeight = useBottomTabBarHeight();
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraViewType>(null);
-  const arRef = useRef<MedicationARViewHandle>(null);
   const pulse = useRef(new Animated.Value(0)).current;
 
   const [mode, setMode] = useState<Mode>('camera');
-  const [scanPhase, setScanPhase] = useState<MedicationScanPhase>('idle');
   const [capturing, setCapturing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(
-    USE_VIRO_AR
-      ? 'Apunta al envase del medicamento para activar AR'
-      : 'Enfoca el nombre del medicamento en el recuadro'
-  );
+  const [status, setStatus] = useState('Enfoca el nombre del medicamento en el recuadro');
   const [query, setQuery] = useState('');
   const [detectedLines, setDetectedLines] = useState<string[]>([]);
   const [manualName, setManualName] = useState('');
@@ -60,7 +50,6 @@ export default function MedARScreen() {
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
   const [selected, setSelected] = useState<Medication | null>(null);
   const [matches, setMatches] = useState<Medication[]>([]);
-  const [scanSession, setScanSession] = useState(0);
   const scanBusyRef = useRef(false);
 
   const userConditionId =
@@ -92,7 +81,6 @@ export default function MedARScreen() {
         const data = await api.identifyMedicationFromOcr(text, userConditionId);
         const results = data.matches ?? (data.match ? [data.match] : []);
         applyResults(results, lines.length ? lines : data.detectedLines ?? []);
-        if (results.length > 0) setScanPhase('success');
         setStatus(
           results.length
             ? `Encontramos ${results.length} coincidencia(s)`
@@ -165,13 +153,11 @@ export default function MedARScreen() {
         applyResults(results, ocrLines);
 
         if (results.length > 0) {
-          setScanPhase('success');
           setStatus(`Detectado: ${results[0].name}`);
           return;
         }
 
         setShowManualPrompt(true);
-        setScanPhase('idle');
         setStatus(
           ocrLines.length
             ? 'Texto leído pero sin coincidencia — escribe el nombre'
@@ -182,7 +168,6 @@ export default function MedARScreen() {
       } catch (e) {
         console.error(e);
         setShowManualPrompt(true);
-        setScanPhase('idle');
         setStatus('Error al analizar — escribe el nombre del medicamento');
       } finally {
         setLoading(false);
@@ -194,30 +179,13 @@ export default function MedARScreen() {
 
   const resetScan = () => {
     setCapturedImageUri(null);
-    setScanPhase('idle');
     setSelected(null);
     setMatches([]);
     setDetectedLines([]);
     setShowManualPrompt(false);
     setManualName('');
-    setScanSession((n) => n + 1);
-    setStatus('Apunta al envase del medicamento para activar AR');
+    setStatus('Enfoca el nombre del medicamento en el recuadro');
   };
-
-  const handleArTrackingReady = useCallback(() => {
-    setStatus('Mueve el teléfono lentamente sobre el envase o la mesa');
-  }, []);
-
-  const handleArTargetLocked = useCallback((locked: boolean) => {
-    if (locked) {
-      setStatus('AR activo — centra el nombre del medicamento y captura');
-    }
-  }, []);
-
-  const realignArFrame = useCallback(() => {
-    setScanSession((n) => n + 1);
-    setStatus('Apunta de nuevo al nombre en el envase');
-  }, []);
 
   useEffect(() => {
     if (mode !== 'search') return;
@@ -226,11 +194,9 @@ export default function MedARScreen() {
   }, [query, mode, searchByName]);
 
   const captureAndIdentify = async () => {
-    if (capturing || capturedImageUri) return;
-    if (!USE_VIRO_AR && !cameraRef.current) return;
+    if (capturing || capturedImageUri || !cameraRef.current) return;
 
     setCapturing(true);
-    setScanPhase('capturing');
     setStatus('Capturando imagen...');
     setSelected(null);
     setMatches([]);
@@ -238,24 +204,14 @@ export default function MedARScreen() {
     setManualName('');
 
     try {
-      let photoUri: string | null = null;
-
-      if (USE_VIRO_AR) {
-        const shot = await arRef.current?.takeScreenshot(`med-${Date.now()}`);
-        if (shot?.success && shot.url) {
-          photoUri = shot.url.startsWith('file://') ? shot.url : `file://${shot.url}`;
-        }
-      } else {
-        const photo = await cameraRef.current!.takePictureAsync({
-          quality: 0.8,
-          skipProcessing: Platform.OS === 'android',
-        });
-        photoUri = photo?.uri ?? null;
-      }
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        skipProcessing: Platform.OS === 'android',
+      });
+      const photoUri = photo?.uri ?? null;
 
       if (!photoUri) {
         setStatus('No se pudo capturar la foto');
-        setScanPhase('idle');
         return;
       }
 
@@ -264,7 +220,6 @@ export default function MedARScreen() {
     } catch (e) {
       console.error(e);
       setCapturedImageUri(null);
-      setScanPhase('idle');
       setShowManualPrompt(true);
       setStatus('Escribe el nombre del medicamento que ves en el envase');
     } finally {
@@ -315,81 +270,22 @@ export default function MedARScreen() {
     );
   }
 
-  if (USE_VIRO_AR && mode === 'camera' && !capturedImageUri) {
-    return (
-      <View style={styles.arFullscreen} collapsable={false}>
-        <MedicationARViewLoader
-          ref={arRef}
-          capturedUri={null}
-          scanPhase={scanPhase}
-          showOverlay
-          scanSession={scanSession}
-          onArTrackingReady={handleArTrackingReady}
-          onArTargetLocked={handleArTargetLocked}
-        />
-
-        <SafeAreaView edges={['top', 'bottom']} style={styles.arChrome} pointerEvents="box-none">
-          <View style={styles.arTopBar}>
-            <Text style={styles.arTitle}>Escanear medicamento</Text>
-            <Pressable
-              style={styles.arModeBtn}
-              onPress={() => {
-                setMode('search');
-                resetScan();
-              }}
-            >
-              <Ionicons name="search" size={18} color="#fff" />
-              <Text style={styles.arModeBtnText}>Buscar</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.arBottomPanel}>
-            <Text style={styles.arStatusText}>{status}</Text>
-
-            {status.includes('AR activo') && (
-              <Pressable style={styles.realignBtn} onPress={realignArFrame}>
-                <Ionicons name="scan-outline" size={16} color="#c4b5fd" />
-                <Text style={styles.realignBtnText}>Reajustar marco</Text>
-              </Pressable>
-            )}
-
-            <Pressable
-              style={[styles.captureBtn, (capturing || loading) && styles.captureBtnDisabled]}
-              onPress={captureAndIdentify}
-              disabled={capturing || loading}
-            >
-              {capturing || loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="camera" size={22} color="#fff" />
-                  <Text style={styles.captureBtnText}>Capturar e identificar</Text>
-                </>
-              )}
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
   return (
     <Screen style={{ backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + 24 }]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>Identificar medicamento</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {USE_VIRO_AR
-              ? 'Realidad aumentada + OCR para identificar el envase'
-              : 'Cámara + OCR local (Tesseract en tu Mac)'}
+            Apunta la cámara al nombre en el envase y captura para identificarlo
           </Text>
           {isExpoGo() && (
-            <Text style={[styles.arHint, { color: Colors.primary }]}>
-              Para AR completo: compila con npx expo run:ios o run:android
+            <Text style={[styles.cameraHint, { color: Colors.primary }]}>
+              OCR on-device limitado en Expo Go — el backend también analiza la foto
             </Text>
           )}
         </View>
@@ -410,25 +306,15 @@ export default function MedARScreen() {
 
         {mode === 'camera' ? (
           <>
-            <View style={[styles.cameraWrap, USE_VIRO_AR && styles.cameraWrapAr]}>
-              {USE_VIRO_AR ? (
-                <MedicationARViewLoader
-                  ref={arRef}
-                  capturedUri={capturedImageUri}
-                  scanPhase={scanPhase}
-                  showOverlay={!capturedImageUri}
-                  scanSession={scanSession}
-                  onArTrackingReady={handleArTrackingReady}
-                  onArTargetLocked={handleArTargetLocked}
-                />
-              ) : capturedImageUri ? (
+            <View style={styles.cameraWrap}>
+              {capturedImageUri ? (
                 <Image source={{ uri: capturedImageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
               ) : (
                 <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
               )}
 
-              {!USE_VIRO_AR && !capturedImageUri && (
-                <View style={styles.arOverlay} pointerEvents="none">
+              {!capturedImageUri && (
+                <View style={styles.cameraOverlay} pointerEvents="none">
                   <View style={styles.hudBadge}>
                     <Ionicons name="scan" size={14} color="#fff" />
                     <Text style={styles.hudText}>LECTURA DE ENVASE</Text>
@@ -670,74 +556,16 @@ function InfoRow({
 }
 
 const styles = StyleSheet.create({
-  arFullscreen: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  arChrome: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-  },
-  arTopBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 4,
-  },
-  arTitle: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  arModeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  arModeBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  arBottomPanel: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 10,
-  },
-  realignBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-  },
-  realignBtnText: {
-    color: '#c4b5fd',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  arStatusText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 13,
-    fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
   container: { flex: 1 },
-  content: { paddingBottom: 24 },
+  content: { flexGrow: 1 },
   header: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 },
   title: { fontSize: 22, fontWeight: '800' },
   subtitle: { fontSize: 13, marginTop: 2 },
+  cameraHint: {
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '600',
+  },
   modeRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -765,17 +593,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#000',
   },
-  cameraWrapAr: {
-    height: 360,
-    borderWidth: 1,
-    borderColor: 'rgba(123, 108, 246, 0.35)',
-  },
-  arHint: {
-    fontSize: 11,
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  arOverlay: {
+  cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
@@ -921,6 +739,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 10,
     marginBottom: 8,
+    flexWrap: 'wrap',
   },
   infoRow: { marginBottom: 6 },
   infoLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Comunidad Salud",
+    "name": "+VIDA",
     "slug": "comunidad-salud",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -59,17 +59,17 @@
             "xRMode": ["AR"]
           },
           "ios": {
-            "cameraUsagePermission": "Comunidad Salud usa la cámara para escanear medicamentos en realidad aumentada.",
-            "microphoneUsagePermission": "Comunidad Salud puede usar el micrófono en experiencias AR.",
-            "photosPermission": "Comunidad Salud puede leer fotos para el escaneo AR de medicamentos.",
-            "savePhotosPermission": "Comunidad Salud puede guardar capturas del escaneo AR."
+            "cameraUsagePermission": "+VIDA usa la cámara para escanear medicamentos.",
+            "microphoneUsagePermission": "+VIDA puede usar el micrófono en experiencias AR.",
+            "photosPermission": "+VIDA puede leer fotos para el escaneo de medicamentos.",
+            "savePhotosPermission": "+VIDA puede guardar capturas del escaneo."
           }
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Permite que Comunidad Salud use tu ubicación para el mapa de la comunidad."
+          "locationWhenInUsePermission": "Permite que +VIDA use tu ubicación para el mapa de la comunidad."
         }
       ]
     ],

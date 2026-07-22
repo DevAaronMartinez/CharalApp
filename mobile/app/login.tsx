@@ -83,7 +83,7 @@ export default function LoginScreen() {
       >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.logo}>💜</Text>
-        <Text style={[styles.title, { color: colors.text }]}>Comunidad Salud</Text>
+        <Text style={[styles.title, { color: colors.text }]}>+VIDA</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Conecta con personas que comparten tu camino
         </Text>

@@ -19,6 +19,7 @@ type Props = {
   scanPhase: MedicationScanPhase;
   showOverlay: boolean;
   scanSession?: number;
+  hideHudChrome?: boolean;
   onArTrackingReady?: () => void;
   onArTargetLocked?: (locked: boolean) => void;
 };
@@ -28,7 +29,15 @@ function MedicationScanSceneWrapper(props: import('./med-ar-types').MedicationSc
 }
 
 export const MedicationARView = forwardRef<MedicationARViewHandle, Props>(function MedicationARView(
-  { capturedUri, scanPhase, showOverlay, scanSession = 0, onArTrackingReady, onArTargetLocked },
+  {
+    capturedUri,
+    scanPhase,
+    showOverlay,
+    scanSession = 0,
+    hideHudChrome = false,
+    onArTrackingReady,
+    onArTargetLocked,
+  },
   ref
 ) {
   const navigatorRef = useRef<InstanceType<typeof ViroARSceneNavigator> | null>(null);
@@ -83,30 +92,32 @@ export const MedicationARView = forwardRef<MedicationARViewHandle, Props>(functi
 
       {showOverlay && !capturedUri && (
         <View style={styles.hud} pointerEvents="none">
-          <View style={styles.hudTop}>
-            <View style={styles.hudBadge}>
-              <Ionicons name="scan-circle" size={14} color="#fff" />
-              <Text style={styles.hudBadgeText}>AR · MEDICAMENTO</Text>
+          {!hideHudChrome && (
+            <View style={styles.hudTop}>
+              <View style={styles.hudBadge}>
+                <Ionicons name="scan-circle" size={14} color="#fff" />
+                <Text style={styles.hudBadgeText}>AR · MEDICAMENTO</Text>
+              </View>
+              {!arReady && (
+                <View style={styles.trackingPill}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.trackingText}>Inicializando…</Text>
+                </View>
+              )}
+              {arReady && !targetLocked && (
+                <View style={[styles.trackingPill, styles.trackingPillScan]}>
+                  <Ionicons name="move-outline" size={14} color="#fff" />
+                  <Text style={styles.trackingText}>Apunta al envase</Text>
+                </View>
+              )}
+              {targetLocked && (
+                <View style={[styles.trackingPill, styles.trackingPillLocked]}>
+                  <Ionicons name="checkmark-circle" size={14} color="#86efac" />
+                  <Text style={styles.trackingText}>AR activo</Text>
+                </View>
+              )}
             </View>
-            {!arReady && (
-              <View style={styles.trackingPill}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.trackingText}>Inicializando…</Text>
-              </View>
-            )}
-            {arReady && !targetLocked && (
-              <View style={[styles.trackingPill, styles.trackingPillScan]}>
-                <Ionicons name="move-outline" size={14} color="#fff" />
-                <Text style={styles.trackingText}>Apunta al envase</Text>
-              </View>
-            )}
-            {targetLocked && (
-              <View style={[styles.trackingPill, styles.trackingPillLocked]}>
-                <Ionicons name="checkmark-circle" size={14} color="#86efac" />
-                <Text style={styles.trackingText}>AR activo</Text>
-              </View>
-            )}
-          </View>
+          )}
 
           {!targetLocked && (
             <>
@@ -114,12 +125,10 @@ export const MedicationARView = forwardRef<MedicationARViewHandle, Props>(functi
                 <View style={styles.reticleH} />
                 <View style={styles.reticleV} />
               </View>
-              <Text style={styles.frameHint}>Enfoca el nombre en el centro</Text>
+              <Text style={[styles.frameHint, hideHudChrome && styles.frameHintRaised]}>
+                Enfoca el nombre en el centro
+              </Text>
             </>
-          )}
-
-          {targetLocked && (
-            <Text style={styles.frameHint}>Marco colocado — pulsa Capturar e identificar</Text>
           )}
         </View>
       )}
@@ -214,6 +223,7 @@ const styles = StyleSheet.create({
   frameHint: {
     position: 'absolute',
     bottom: 16,
+    maxWidth: '88%',
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
@@ -222,7 +232,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 8,
-    overflow: 'hidden',
+  },
+  frameHintRaised: {
+    bottom: 120,
   },
   captureFlash: {
     ...StyleSheet.absoluteFillObject,

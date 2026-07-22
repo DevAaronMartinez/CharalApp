@@ -35,8 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="recommendations"
         options={{
-          title: 'Recomendaciones',
-          tabBarIcon: ({ color }) => <TabBarIcon name="lightbulb-o" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen

@@ -10,6 +10,7 @@ const {
 } = require('@aws-sdk/lib-dynamodb');
 const seed = require('./data/seed');
 const medicationsData = require('./data/medications');
+const { evaluateHealthEvidence, detectHealthEvidence } = require('./health-evidence');
 const { extractTextFromImageBase64 } = require('./ocr');
 const { createToken, getUserIdFromToken } = require('./auth');
 const { docClient, USERS_TABLE, POSTS_TABLE, useDynamo } = require('./db');
@@ -565,6 +566,14 @@ function logout() {
   // JWT es stateless; el cliente elimina el token
 }
 
+async function evaluateEvidence(payload) {
+  return evaluateHealthEvidence(payload);
+}
+
+async function detectEvidence(payload) {
+  return detectHealthEvidence(payload);
+}
+
 module.exports = {
   getConditions,
   getConditionById,
@@ -586,4 +595,6 @@ module.exports = {
   logout,
   saveUser,
   useDynamo,
+  evaluateEvidence,
+  detectEvidence,
 };
