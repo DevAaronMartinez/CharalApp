@@ -39,20 +39,26 @@ export default function ProfileScreen() {
   const updateLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu ubicación para el mapa.');
+      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu ubicación.');
       return;
     }
     const location = await Location.getCurrentPositionAsync({});
-    const [place] = await Location.reverseGeocodeAsync({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    });
+    let city = user?.city ?? 'Mi ciudad';
+    try {
+      const [place] = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+      city = place?.city ?? place?.subregion ?? city;
+    } catch {
+      // Sin red: guardamos coordenadas y dejamos la ciudad anterior.
+    }
     await updateProfile({
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
-      city: place?.city ?? place?.subregion ?? 'Mi ciudad',
+      city,
     });
-    Alert.alert('Ubicación actualizada', 'Tu ubicación aparecerá en el mapa de la comunidad.');
+    Alert.alert('Ubicación guardada', 'Quedó en este celular (sin enviar a un servidor).');
   };
 
   const handleSave = async () => {
@@ -62,7 +68,7 @@ export default function ProfileScreen() {
         bio,
         conditionIds: selectedConditions,
       });
-      Alert.alert('Perfil actualizado', 'Tus cambios se guardaron correctamente.');
+      Alert.alert('Perfil actualizado', 'Tus cambios quedaron guardados en este celular.');
     } catch (error) {
       Alert.alert('Error', error instanceof Error ? error.message : 'No se pudo guardar');
     } finally {
@@ -142,7 +148,7 @@ export default function ProfileScreen() {
 
       <Pressable style={styles.locationBtn} onPress={updateLocation}>
         <Ionicons name="location" size={18} color={Colors.secondary} />
-        <Text style={styles.locationText}>Actualizar mi ubicación en el mapa</Text>
+        <Text style={styles.locationText}>Guardar mi ubicación en el celular</Text>
       </Pressable>
 
       <Pressable
@@ -150,12 +156,12 @@ export default function ProfileScreen() {
         onPress={handleSave}
         disabled={saving}
       >
-        <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
+        <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar en este celular'}</Text>
       </Pressable>
 
       <Pressable style={styles.logoutBtn} onPress={logout}>
-        <Ionicons name="log-out-outline" size={18} color={Colors.accent} />
-        <Text style={styles.logoutText}>Cerrar sesión</Text>
+        <Ionicons name="refresh-outline" size={18} color={Colors.accent} />
+        <Text style={styles.logoutText}>Restablecer perfil demo</Text>
       </Pressable>
       </ScrollView>
     </Screen>

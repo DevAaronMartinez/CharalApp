@@ -14,7 +14,7 @@ import { ConditionBadge } from '@/components/ConditionPicker';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import { api } from '@/services/api';
+import { getLocalRecommendations } from '@/data/localSeed';
 import type { Condition, Recommendation } from '@/types';
 
 type Props = {
@@ -43,8 +43,7 @@ export function RecommendationsFeed({ activeConditionId }: Props) {
     const requestId = ++requestRef.current;
     setLoading(true);
 
-    api
-      .getRecommendations(activeConditionId)
+    Promise.resolve(getLocalRecommendations(activeConditionId))
       .then((data) => {
         if (requestId !== requestRef.current) return;
         setCondition(data.condition);
@@ -67,7 +66,7 @@ export function RecommendationsFeed({ activeConditionId }: Props) {
     if (!activeConditionId) return;
     setRefreshing(true);
     try {
-      const data = await api.getRecommendations(activeConditionId);
+      const data = getLocalRecommendations(activeConditionId);
       setCondition(data.condition);
       setRecommendations(data.recommendations);
     } catch (error) {

@@ -15,7 +15,6 @@ import type { CameraView as CameraViewType } from 'expo-camera';
 
 import Colors from '@/constants/Colors';
 import type { HealthDeviceVlmController } from '@/hooks/useHealthDeviceVlm';
-import { api } from '@/services/api';
 import type {
   BloodPressureContext,
   EvidenceEvaluationResult,
@@ -30,7 +29,8 @@ import {
   type EvidenceSuggestions,
 } from '@/utils/evidenceDetect';
 import { isExpoGo } from '@/utils/executorch';
-import { extractMedicationText, readImageAsBase64 } from '@/utils/medicationOcr';
+import { evaluateManualEvidence } from '@/utils/healthEvidenceEvaluate';
+import { extractMedicationText } from '@/utils/medicationOcr';
 
 type InputMode = 'photo' | 'manual';
 
@@ -162,26 +162,26 @@ export function EvidenceEvaluatorCore({ evidenceType, tint, vlm = null }: Props)
             const preview = reading?.raw?.slice(0, 80);
             setStatus(
               preview
-                ? `On-device no parseó números (${preview}…) — probando servidor…`
-                : 'On-device no pudo leer con claridad — probando servidor…'
+                ? `On-device no parseó números (${preview}…) — probando OCR local…`
+                : 'On-device no pudo leer con claridad — probando OCR local…'
             );
           } catch (vlmErr) {
             console.warn('[device-read] lectura falló:', vlmErr);
-            setStatus('Lectura on-device falló — probando servidor…');
+            setStatus('Lectura on-device falló — probando OCR local…');
           }
         } else if (vlm && !vlm.isReady) {
           setStatus(
-            `Preparando OCR on-device… ${Math.round((vlm.downloadProgress || 0) * 100)}% — usando servidor`
+            `Preparando OCR on-device… ${Math.round((vlm.downloadProgress || 0) * 100)}%`
           );
         } else {
           setStatus(
             isExpoGo()
-              ? 'Analizando con OCR del servidor…'
+              ? 'Analizando imagen en el dispositivo…'
               : 'Analizando imagen…'
           );
         }
 
-        // OCR on-device (development build) antes del backend.
+        // OCR local (sin backend). Si falla → entrada manual.
         try {
           const local = await extractMedicationText(uri);
           if (local.available && local.lines.length) {
@@ -194,37 +194,15 @@ export function EvidenceEvaluatorCore({ evidenceType, tint, vlm = null }: Props)
               applyDetected(localSuggestions, 'ocr');
               return;
             }
+            applySuggestions(localSuggestions, {
+              setSystolic,
+              setDiastolic,
+              setPulse,
+              setGlucoseValue,
+            });
           }
         } catch (ocrLocalErr) {
           console.warn('[ocr-local]', ocrLocalErr);
-        }
-
-        const imageBase64 = await readImageAsBase64(uri);
-        const detected = await api.detectHealthEvidence({
-          type: evidenceType,
-          imageBase64,
-        });
-
-        if (detected.found && detected.suggestions) {
-          const suggestions: EvidenceSuggestions = {
-            systolic: detected.suggestions.systolic
-              ? String(detected.suggestions.systolic)
-              : undefined,
-            diastolic: detected.suggestions.diastolic
-              ? String(detected.suggestions.diastolic)
-              : undefined,
-            pulse: detected.suggestions.pulse
-              ? String(detected.suggestions.pulse)
-              : undefined,
-            glucoseValue: detected.suggestions.value
-              ? String(detected.suggestions.value)
-              : undefined,
-          };
-          if (detected.suggestions.context) {
-            setGlucoseContext(detected.suggestions.context);
-          }
-          applyDetected(suggestions, 'ocr');
-          return;
         }
 
         setStatus('No se leyeron números claros — completa o corrige a mano.');
@@ -274,46 +252,32 @@ export function EvidenceEvaluatorCore({ evidenceType, tint, vlm = null }: Props)
     setResult(null);
 
     try {
-      let payload: Parameters<typeof api.evaluateHealthEvidence>[0];
+      const data =
+        evidenceType === 'blood_pressure'
+          ? evaluateManualEvidence({
+              type: 'blood_pressure',
+              systolic: Number(systolic),
+              diastolic: Number(diastolic),
+              pulse: pulse ? Number(pulse) : undefined,
+              bpContext,
+            })
+          : evaluateManualEvidence({
+              type: 'blood_glucose',
+              glucoseValue: Number(glucoseValue.replace(',', '.')),
+              glucoseContext,
+              unit: glucoseContext === 'hba1c' ? '%' : 'mg/dL',
+            });
 
-      if (evidenceType === 'blood_pressure') {
-        const sys = Number(systolic);
-        const dia = Number(diastolic);
-        if (!sys || !dia) {
-          setError('Ingresa sistólica y diastólica (ej. 120 y 80).');
-          return;
-        }
-        payload = {
-          type: 'blood_pressure',
-          manual: {
-            systolic: sys,
-            diastolic: dia,
-            pulse: pulse ? Number(pulse) : undefined,
-            context: bpContext,
-          },
-        };
-      } else {
-        const val = Number(glucoseValue.replace(',', '.'));
-        if (!val) {
-          setError('Ingresa un valor de glucosa o HbA1c.');
-          return;
-        }
-        payload = {
-          type: 'blood_glucose',
-          manual: {
-            value: val,
-            unit: glucoseContext === 'hba1c' ? '%' : 'mg/dL',
-            context: glucoseContext,
-          },
-        };
-      }
-
-      const data = await api.evaluateHealthEvidence(payload);
       if ('error' in data && data.error) {
         setError(data.error);
         return;
       }
-      setResult(data as EvidenceEvaluationResult);
+
+      const resultData = data as EvidenceEvaluationResult;
+      if (detectionSource === 'vlm' || detectionSource === 'ocr' || detectionSource === 'on_device') {
+        resultData.source = detectionSource === 'on_device' ? 'ocr' : detectionSource;
+      }
+      setResult(resultData);
       setStatus(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al evaluar');

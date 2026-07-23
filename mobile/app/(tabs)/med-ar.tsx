@@ -20,10 +20,9 @@ import { Screen } from '@/components/Screen';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/services/api';
 import type { Medication } from '@/types';
 import {
-  extractMedicationText,
+  identifyMedication,
   identifyMedicationFromPhoto,
   isExpoGo,
 } from '@/utils/medicationOcr';
@@ -74,31 +73,6 @@ export default function MedARScreen() {
     setSelected(results.length === 1 ? results[0] : null);
   };
 
-  const identifyFromText = useCallback(
-    async (text: string, lines: string[] = []): Promise<Medication[]> => {
-      setLoading(true);
-      try {
-        const data = await api.identifyMedicationFromOcr(text, userConditionId);
-        const results = data.matches ?? (data.match ? [data.match] : []);
-        applyResults(results, lines.length ? lines : data.detectedLines ?? []);
-        setStatus(
-          results.length
-            ? `Encontramos ${results.length} coincidencia(s)`
-            : 'No reconocimos el medicamento — prueba búsqueda manual'
-        );
-        return results;
-      } catch (e) {
-        console.error(e);
-        applyResults([]);
-        setStatus('Error al identificar. Intenta de nuevo.');
-        return [];
-      } finally {
-        setLoading(false);
-      }
-    },
-    [userConditionId]
-  );
-
   const searchByName = useCallback(
     async (text: string): Promise<Medication[]> => {
       const q = text.trim();
@@ -109,7 +83,7 @@ export default function MedARScreen() {
       }
       setLoading(true);
       try {
-        const data = await api.identifyMedication({ q, conditionId: userConditionId });
+        const data = identifyMedication({ q, conditionId: userConditionId });
         const results = data.matches ?? (data.match ? [data.match] : []);
         applyResults(results);
         return results;
@@ -132,23 +106,12 @@ export default function MedARScreen() {
       setShowManualPrompt(false);
 
       try {
-        setStatus('Leyendo texto del envase...');
-
-        const { lines, available } = await extractMedicationText(uri);
-        const localText = lines.join('\n');
-
-        if (available && localText.trim()) {
-          setDetectedLines(lines);
-          const results = await identifyFromText(localText, lines);
-          if (results.length > 0) return;
-        }
-
         setLoading(true);
-        setStatus('Analizando imagen con OCR local...');
+        setStatus('Leyendo texto del envase (on-device)…');
 
         const data = await identifyMedicationFromPhoto(uri, userConditionId);
         const results = data.matches ?? (data.match ? [data.match] : []);
-        const ocrLines = data.detectedLines ?? lines;
+        const ocrLines = data.detectedLines ?? [];
 
         applyResults(results, ocrLines);
 
@@ -162,7 +125,7 @@ export default function MedARScreen() {
           ocrLines.length
             ? 'Texto leído pero sin coincidencia — escribe el nombre'
             : isExpoGo()
-              ? 'Apunta al nombre del envase o escríbelo abajo'
+              ? 'En Expo Go usa búsqueda manual; en build nativo lee el envase'
               : 'No se leyó texto — escribe el nombre del envase'
         );
       } catch (e) {
@@ -174,7 +137,7 @@ export default function MedARScreen() {
         scanBusyRef.current = false;
       }
     },
-    [identifyFromText, userConditionId]
+    [userConditionId]
   );
 
   const resetScan = () => {

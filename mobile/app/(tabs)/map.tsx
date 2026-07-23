@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -13,46 +13,37 @@ import { Screen } from '@/components/Screen';
 import Colors, { serviceTypeLabels } from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/services/api';
-import type { HealthService, LocationCluster } from '@/types';
+import { getLocalClusters, getLocalServices } from '@/utils/mapLocalData';
 
 const LOCAL_DELTA = { latitudeDelta: 0.08, longitudeDelta: 0.08 };
 
 const FALLBACK_REGION: Region = {
-  latitude: 23.6,
-  longitude: -102.0,
-  latitudeDelta: 14,
-  longitudeDelta: 14,
+  latitude: 19.42,
+  longitude: -99.15,
+  latitudeDelta: 0.12,
+  longitudeDelta: 0.12,
 };
 
 export default function MapScreen() {
-  const { conditions, selectedConditionId, setSelectedConditionId } = useAuth();
+  const { conditions } = useAuth();
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const mapRef = useRef<MapView>(null);
 
-  const [clusters, setClusters] = useState<LocationCluster[]>([]);
-  const [services, setServices] = useState<HealthService[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Filtro propio del mapa (no el del perfil): arranca en "Todas".
+  const [filterConditionId, setFilterConditionId] = useState<string | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const [showServices, setShowServices] = useState(true);
   const [showClusters, setShowClusters] = useState(true);
 
-  const loadData = useCallback(async () => {
-    const [clustersData, servicesData] = await Promise.all([
-      api.getClusters(selectedConditionId ?? undefined),
-      api.getServices(selectedConditionId ?? undefined),
-    ]);
-    setClusters(clustersData);
-    setServices(servicesData);
-  }, [selectedConditionId]);
-
-  useEffect(() => {
-    setLoading(true);
-    loadData()
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [loadData]);
+  const clusters = useMemo(
+    () => getLocalClusters(filterConditionId),
+    [filterConditionId]
+  );
+  const services = useMemo(
+    () => getLocalServices(filterConditionId),
+    [filterConditionId]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -93,89 +84,89 @@ export default function MapScreen() {
   return (
     <Screen style={{ backgroundColor: colors.background }}>
       <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Mapa de comunidad</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Concentración de personas y servicios de salud
-        </Text>
-      </View>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>Mapa de comunidad</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Concentración de personas y servicios de salud
+          </Text>
+        </View>
 
-      <ConditionPicker
-        conditions={conditions}
-        selectedId={selectedConditionId}
-        onSelect={setSelectedConditionId}
-      />
-
-      <View style={styles.legend}>
-        <LegendItem
-          color={Colors.secondary}
-          label="Comunidad"
-          active={showClusters}
-          onPress={() => setShowClusters((v) => !v)}
+        <ConditionPicker
+          conditions={conditions}
+          selectedId={filterConditionId}
+          onSelect={setFilterConditionId}
         />
-        <LegendItem
-          color={Colors.primary}
-          label="Clínicas/Servicios"
-          active={showServices}
-          onPress={() => setShowServices((v) => !v)}
-        />
-      </View>
 
-      {loading || !mapRegion ? (
-        <ActivityIndicator style={styles.loader} color={Colors.primary} />
-      ) : (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={Platform.OS === 'android' ? undefined : PROVIDER_DEFAULT}
-          initialRegion={mapRegion}
-          showsUserLocation
-          showsMyLocationButton
-        >
-          {showClusters &&
-            clusters.map((cluster, i) => (
-              <Circle
-                key={`cluster-${i}`}
-                center={{
-                  latitude: cluster.latitude,
-                  longitude: cluster.longitude,
-                }}
-                radius={cluster.count * 200 + 300}
-                fillColor={`${Colors.secondary}44`}
-                strokeColor={Colors.secondary}
-                strokeWidth={2}
-              />
-            ))}
+        <View style={styles.legend}>
+          <LegendItem
+            color={Colors.secondary}
+            label={`Comunidad (${clusters.length})`}
+            active={showClusters}
+            onPress={() => setShowClusters((v) => !v)}
+          />
+          <LegendItem
+            color={Colors.primary}
+            label={`Clínicas (${services.length})`}
+            active={showServices}
+            onPress={() => setShowServices((v) => !v)}
+          />
+        </View>
 
-          {showClusters &&
-            clusters.map((cluster, i) => (
-              <Marker
-                key={`marker-cluster-${i}`}
-                coordinate={{
-                  latitude: cluster.latitude,
-                  longitude: cluster.longitude,
-                }}
-                title={`${cluster.count} personas`}
-                description={cluster.city ?? 'Zona de concentración'}
-                pinColor={Colors.secondary}
-              />
-            ))}
+        {!mapRegion ? (
+          <ActivityIndicator style={styles.loader} color={Colors.primary} />
+        ) : (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={Platform.OS === 'android' ? undefined : PROVIDER_DEFAULT}
+            initialRegion={mapRegion}
+            showsUserLocation
+            showsMyLocationButton
+          >
+            {showClusters &&
+              clusters.map((cluster, i) => (
+                <Circle
+                  key={`cluster-${i}-${filterConditionId ?? 'all'}`}
+                  center={{
+                    latitude: cluster.latitude,
+                    longitude: cluster.longitude,
+                  }}
+                  radius={cluster.count * 200 + 300}
+                  fillColor={`${Colors.secondary}44`}
+                  strokeColor={Colors.secondary}
+                  strokeWidth={2}
+                />
+              ))}
 
-          {showServices &&
-            services.map((service) => (
-              <Marker
-                key={service.id}
-                coordinate={{
-                  latitude: service.latitude,
-                  longitude: service.longitude,
-                }}
-                title={service.name}
-                description={`${serviceTypeLabels[service.type] ?? service.type} · ${service.address}`}
-                pinColor={Colors.primary}
-              />
-            ))}
-        </MapView>
-      )}
+            {showClusters &&
+              clusters.map((cluster, i) => (
+                <Marker
+                  key={`marker-cluster-${i}-${filterConditionId ?? 'all'}`}
+                  coordinate={{
+                    latitude: cluster.latitude,
+                    longitude: cluster.longitude,
+                  }}
+                  title={`${cluster.count} personas`}
+                  description={cluster.city ?? 'Zona de concentración'}
+                  pinColor={Colors.secondary}
+                />
+              ))}
+
+            {showServices &&
+              services.map((service) => (
+                <Marker
+                  key={`${service.id}-${filterConditionId ?? 'all'}`}
+                  coordinate={{
+                    latitude: service.latitude,
+                    longitude: service.longitude,
+                  }}
+                  title={service.name}
+                  description={`${serviceTypeLabels[service.type] ?? service.type} · ${service.address}`}
+                  pinColor={Colors.primary}
+                />
+              ))}
+          </MapView>
+        )}
       </View>
     </Screen>
   );

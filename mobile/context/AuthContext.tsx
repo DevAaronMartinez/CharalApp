@@ -1,6 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, clearToken, loadToken, saveToken } from '@/services/api';
+import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+
+import { LOCAL_CONDITIONS, LOCAL_DEMO_USER } from '@/data/localSeed';
 import type { Condition, User } from '@/types';
+
+const PROFILE_KEY = 'local_profile_v1';
 
 interface AuthContextValue {
   user: User | null;
@@ -27,51 +32,79 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function readStoredProfile(): Promise<User | null> {
+  try {
+    const raw =
+      Platform.OS === 'web'
+        ? localStorage.getItem(PROFILE_KEY)
+        : await SecureStore.getItemAsync(PROFILE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
+}
+
+async function writeStoredProfile(user: User): Promise<void> {
+  const raw = JSON.stringify(user);
+  if (Platform.OS === 'web') {
+    localStorage.setItem(PROFILE_KEY, raw);
+  } else {
+    await SecureStore.setItemAsync(PROFILE_KEY, raw);
+  }
+}
+
+async function clearStoredProfile(): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(PROFILE_KEY);
+  } else {
+    await SecureStore.deleteItemAsync(PROFILE_KEY);
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [conditions, setConditions] = useState<Condition[]>([]);
+  const [conditions] = useState<Condition[]>(LOCAL_CONDITIONS);
   const [selectedConditionId, setSelectedConditionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshUser = useCallback(async () => {
-    try {
-      const me = await api.getMe();
-      setUser(me);
-      if (!selectedConditionId && me.conditionIds?.length) {
-        setSelectedConditionId(me.conditionIds[0]);
-      }
-    } catch {
-      setUser(null);
-      await clearToken();
+  const applyUser = useCallback((next: User) => {
+    setUser(next);
+    if (next.conditionIds?.length) {
+      setSelectedConditionId((prev) =>
+        prev && next.conditionIds.includes(prev) ? prev : next.conditionIds[0]
+      );
     }
-  }, [selectedConditionId]);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const stored = await readStoredProfile();
+    applyUser(stored ?? LOCAL_DEMO_USER);
+  }, [applyUser]);
 
   useEffect(() => {
     async function init() {
       try {
-        const [token, allConditions] = await Promise.all([
-          loadToken(),
-          api.getConditions(),
-        ]);
-        setConditions(allConditions);
-        if (token) await refreshUser();
+        const stored = await readStoredProfile();
+        const next = stored ?? LOCAL_DEMO_USER;
+        if (!stored) {
+          await writeStoredProfile(next);
+        }
+        applyUser(next);
       } catch (error) {
-        console.error('Init error:', error);
+        console.error('Init local profile error:', error);
+        applyUser(LOCAL_DEMO_USER);
       } finally {
         setIsLoading(false);
       }
     }
     init();
-  }, [refreshUser]);
+  }, [applyUser]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { user: loggedUser, token } = await api.login(email, password);
-    await saveToken(token);
-    setUser(loggedUser);
-    if (loggedUser.conditionIds?.length) {
-      setSelectedConditionId(loggedUser.conditionIds[0]);
-    }
-  }, []);
+  const login = useCallback(async (_email: string, _password: string) => {
+    // Modo local: no hay autenticación remota.
+    await refreshUser();
+  }, [refreshUser]);
 
   const register = useCallback(
     async (payload: {
@@ -84,31 +117,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       city?: string;
       bio?: string;
     }) => {
-      const { user: newUser, token } = await api.register(payload);
-      await saveToken(token);
-      setUser(newUser);
-      if (newUser.conditionIds?.length) {
-        setSelectedConditionId(newUser.conditionIds[0]);
-      }
+      const next: User = {
+        ...LOCAL_DEMO_USER,
+        id: `local-${Date.now()}`,
+        name: payload.name,
+        email: payload.email,
+        conditionIds: payload.conditionIds.length
+          ? payload.conditionIds
+          : LOCAL_DEMO_USER.conditionIds,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        city: payload.city,
+        bio: payload.bio,
+        createdAt: new Date().toISOString(),
+      };
+      await writeStoredProfile(next);
+      applyUser(next);
     },
-    []
+    [applyUser]
   );
 
   const logout = useCallback(async () => {
-    try {
-      await api.logout();
-    } catch {
-      // ignore
-    }
-    await clearToken();
-    setUser(null);
-    setSelectedConditionId(null);
-  }, []);
+    await clearStoredProfile();
+    await writeStoredProfile(LOCAL_DEMO_USER);
+    applyUser(LOCAL_DEMO_USER);
+  }, [applyUser]);
 
-  const updateProfile = useCallback(async (updates: Partial<User>) => {
-    const updated = await api.updateProfile(updates);
-    setUser(updated);
-  }, []);
+  const updateProfile = useCallback(
+    async (updates: Partial<User>) => {
+      const base = user ?? LOCAL_DEMO_USER;
+      const next: User = { ...base, ...updates };
+      await writeStoredProfile(next);
+      applyUser(next);
+    },
+    [applyUser, user]
+  );
 
   const value = useMemo(
     () => ({

@@ -1,6 +1,11 @@
-import { File } from 'expo-file-system';
 import Constants from 'expo-constants';
-import { api } from '@/services/api';
+
+import {
+  identifyFromOcrText,
+  identifyMedicationFromPhotoLocal,
+  identifyMedications,
+} from '@/utils/medicationIdentify';
+import type { MedicationIdentifyResult } from '@/types';
 
 /** Expo Go no incluye el módulo nativo ExpoTextExtractor. */
 export function isExpoGo(): boolean {
@@ -11,10 +16,6 @@ export type OcrResult = {
   lines: string[];
   available: boolean;
 };
-
-export async function readImageAsBase64(uri: string): Promise<string> {
-  return new File(uri).base64();
-}
 
 /**
  * OCR on-device. En Expo Go devuelve available:false sin cargar el módulo nativo.
@@ -41,13 +42,33 @@ export async function extractMedicationText(uri: string): Promise<OcrResult> {
   }
 }
 
+/** Match local contra el catálogo embebido (sin red). */
+export function identifyMedicationFromOcr(
+  text: string,
+  conditionId?: string
+): MedicationIdentifyResult {
+  return identifyFromOcrText(text, conditionId);
+}
+
+/** Búsqueda local por nombre / código. */
+export function identifyMedication(params?: {
+  q?: string;
+  barcode?: string;
+  conditionId?: string;
+}): MedicationIdentifyResult {
+  return identifyMedications({
+    query: params?.q,
+    barcode: params?.barcode,
+    conditionId: params?.conditionId,
+  });
+}
+
 /**
- * OCR local vía backend (Tesseract en tu Mac). Funciona en Expo Go.
+ * OCR on-device + identificación local. Sin backend.
  */
 export async function identifyMedicationFromPhoto(
   uri: string,
   conditionId?: string
-) {
-  const imageBase64 = await readImageAsBase64(uri);
-  return api.identifyMedicationFromImage(imageBase64, conditionId);
+): Promise<MedicationIdentifyResult> {
+  return identifyMedicationFromPhotoLocal(uri, conditionId, extractMedicationText);
 }
