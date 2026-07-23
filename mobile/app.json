@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.comunidadsalud.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para mostrarte en el mapa de la comunidad y encontrar servicios cercanos.",
-        "NSCameraUsageDescription": "Usamos la cámara para leer el nombre del medicamento en el envase e identificarlo.",
+        "NSCameraUsageDescription": "Usamos la cámara para leer medicamentos y las pantallas de tu baumanómetro o glucómetro.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -49,14 +49,16 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Permite leer el nombre del medicamento en el envase con la cámara."
+          "cameraPermission": "Permite leer medicamentos y pantallas de baumanómetro o glucómetro con la cámara."
         }
       ],
       [
         "@reactvision/react-viro",
         {
           "android": {
-            "xRMode": ["AR"]
+            "xRMode": [
+              "AR"
+            ]
           },
           "ios": {
             "cameraUsagePermission": "+VIDA usa la cámara para escanear medicamentos.",
@@ -70,6 +72,14 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Permite que +VIDA use tu ubicación para el mapa de la comunidad."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          }
         }
       ]
     ],

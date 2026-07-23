@@ -12,6 +12,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import Colors from '@/constants/Colors';
+import { initOnDeviceExecutorch } from '@/utils/executorch';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -20,6 +21,9 @@ export const unstable_settings = {
 };
 
 SplashScreen.preventAutoHideAsync();
+
+// ExecuTorch (VLM on-device) — no-op en Expo Go / web.
+initOnDeviceExecutorch();
 
 const LightTheme = {
   ...DefaultTheme,

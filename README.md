@@ -16,12 +16,13 @@ charal3/
 - **Recomendaciones**: tips personalizados por tipo de condición
 - **Mapa**: concentración de usuarios + clínicas y servicios de salud
 - **Medicinas (AR)**: escaneo de envases con cámara AR (ViroReact) u OCR
+- **Evidencias de salud**: foto del baumanómetro/glucómetro con **VLM on-device** ([React Native ExecuTorch](https://executorch.swmansion.com/)) o OCR; el usuario confirma y recibe orientación educativa
 
 ## Requisitos
 
 - Node.js 20+
 - npm
-- Expo Go (modo básico) o **development build** para AR con ViroReact
+- Expo Go (modo básico) o **development build** para AR con ViroReact y VLM on-device
 
 ## AR con ViroReact (Medicinas)
 
@@ -38,6 +39,21 @@ npx expo run:ios    # o run:android
 ```
 
 Tras compilar, la pestaña **Medicinas** muestra cámara AR con marco 3D, cápsula flotante y captura congelada para OCR.
+
+## VLM on-device (presión / glucosa)
+
+En **Perfil → Evaluar mi evidencia**, la app puede leer la pantalla del monitor con un VLM local (LFM2.5-VL 1.6B cuantizado) vía [React Native ExecuTorch](https://docs.swmansion.com/react-native-executorch/docs/fundamentals/getting-started):
+
+- La imagen **no se sube** a un LLM en la nube.
+- La primera vez descarga el modelo (~cientos de MB) y queda en el dispositivo.
+- **Requiere development build** (no Expo Go). En Expo Go se usa cámara + OCR del backend y confirmación manual.
+- Tras detectar valores, el usuario confirma contexto y recibe la evaluación educativa (reglas clínicas locales en la API).
+
+```bash
+cd mobile
+npx expo prebuild
+npx expo run:ios    # o run:android
+```
 
 
 ### 1. Backend (API local)

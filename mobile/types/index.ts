@@ -106,7 +106,7 @@ export interface EvidenceEvaluationResult {
   severity: EvidenceSeverity;
   feedback: string[];
   disclaimer: string;
-  source?: 'manual' | 'ocr';
+  source?: 'manual' | 'ocr' | 'vlm';
   values?: Record<string, unknown>;
   detectedLines?: string[];
 }
@@ -115,6 +115,7 @@ export interface EvidenceDetectionResult {
   type: EvidenceType;
   found: boolean;
   confident?: boolean;
+  engine?: 'vlm' | 'ocr' | 'text';
   suggestions?: {
     systolic?: number;
     diastolic?: number;

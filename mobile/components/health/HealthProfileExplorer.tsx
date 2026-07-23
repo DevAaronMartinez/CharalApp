@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PROFILE_CATEGORY_COLORS } from '@/components/ar/profile-ar-types';
 import { EvidenceEvaluator } from '@/components/health/EvidenceEvaluator';
+import { MaybeHealthVlmProvider } from '@/components/health/MaybeHealthVlmProvider';
 import Colors, { categoryLabels } from '@/constants/Colors';
 import type { Condition, ConditionCategory, EvidenceType } from '@/types';
 
@@ -133,6 +134,7 @@ export function HealthProfileExplorer({ userName, items, onBack }: Props) {
   const categoriesPresent = [...new Set(items.map((i) => i.category))] as ConditionCategory[];
 
   return (
+    <MaybeHealthVlmProvider>
     <View style={styles.root}>
       <HeroBackdrop tint={tint} />
 
@@ -236,6 +238,7 @@ export function HealthProfileExplorer({ userName, items, onBack }: Props) {
         )}
       </SafeAreaView>
     </View>
+    </MaybeHealthVlmProvider>
   );
 }
 
